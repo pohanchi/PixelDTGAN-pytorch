@@ -57,7 +57,7 @@ class Generator(nn.Module):
         if input_.is_cuda and self.ngpu > 1:
             output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
         else:
-            output = self.main(input_.float())
+            output = self.main(input_.float().cuda())
         return output
 
 class Discriminator(nn.Module):
@@ -92,7 +92,7 @@ class Discriminator(nn.Module):
         if input_.is_cuda and self.ngpu > 1:
             output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
         else:
-            output = self.main(input_.float())
+            output = self.main(input_.float().cuda())
 
         return output.view(-1, 1).squeeze(1)
 
@@ -128,7 +128,7 @@ class Domain_Discriminator(nn.Module):
         if input_.is_cuda and self.ngpu > 1:
             output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
         else:
-            output = self.main(input_.float())
+            output = self.main(input_.float().cuda())
 
         return output.view(-1, 1).squeeze(1)
 

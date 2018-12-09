@@ -22,7 +22,7 @@ from model import *
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 parser = argparse.ArgumentParser()
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=128, help='input batch size')
@@ -34,7 +34,7 @@ parser.add_argument('--niter', type=int, default=25, help='number of epochs to t
 parser.add_argument('--lr', type=float, default=0.0002, help='learning rate, default=0.0002')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
-parser.add_argument('--ngpu', type=int, default=0, help='number of GPUs to use')
+parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--netA', default='', help="path to netA (to continue training)")
@@ -63,6 +63,7 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 cudnn.benchmark = True
+print(torch.cuda.is_available())
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 dataset = mydataset('data.p',opt,transform=transforms.Compose([Rescale((64,64)),ToTensor()]))
@@ -145,10 +146,10 @@ for epoch in range(opt.niter):
         ###########################
         lossA = 0
         netA.zero_grad()
-        assd = torch.cat((input_img.float(), ass_label.float()), 1)
-        noassd = torch.cat((input_img.float(), noass_label.float()), 1)
+        assd = torch.cat((input_img.float().cuda(), ass_label.float().cuda()), 1)
+        noassd = torch.cat((input_img.float().cuda(), noass_label.float().cuda()), 1)
         fake = netG.forward(input_img).detach()
-        faked = torch.cat((input_img.float(), fake.float()), 1)
+        faked = torch.cat((input_img.float().cuda(), fake.float().cuda()), 1)
 
         #-- train with associated
         label.fill_(real_label)
@@ -188,7 +189,7 @@ for epoch in range(opt.niter):
         
         errGD.backward(retain_graph=True)
 
-        faked = torch.cat((input_img.float(), fake.float()), 1)
+        faked = torch.cat((input_img.float().cuda(), fake.float().cuda()), 1)
         output_A = netA.forward(faked)
         label.fill_(real_label)#-- fake labels are real for generator cost
         errGA = criterion.forward(output_A,label)
@@ -202,9 +203,9 @@ for epoch in range(opt.niter):
         if i+len(train_dataloader)*epoch == 10:
             end_time = time.time()
             print('10_batch takes {} seconds'.format(end_time-start_time))
-        if i+len(train_dataloader)*epoch % 20==0:
+        if (i+len(train_dataloader)*epoch) % 20==0:
             print('epoch={},batch={}, lossG={}, lossA={}, lossD={}'.format(epoch,i,lossG/2,lossA/3,lossD/3))
-        if i+len(train_dataloader)*epoch % 100==0:
+        if (i+len(train_dataloader)*epoch) % 100==0:
             writer.add_scalar('data/lossA_real1', errA_real1, i+len(train_dataloader)*epoch)
             writer.add_scalar('data/lossA_real2', errA_real2, i+len(train_dataloader)*epoch)
             writer.add_scalar('data/lossA_fake', errA_fake, i+len(train_dataloader)*epoch)
